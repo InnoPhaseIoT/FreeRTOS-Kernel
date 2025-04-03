@@ -337,6 +337,38 @@ void vPortFree( void * pv )
         }
     }
 }
+
+size_t vPortBlockSizeGet( void * pv )
+{
+    uint8_t * puc = ( uint8_t * ) pv;
+    BlockLink_t * pxLink;
+
+    if( pv != NULL )
+    {
+        /* The memory being freed will have an BlockLink_t structure immediately
+         * before it. */
+        puc -= xHeapStructSize;
+
+        /* This casting is to keep the compiler from issuing warnings. */
+        pxLink = ( void * ) puc;
+
+        configASSERT( heapBLOCK_IS_ALLOCATED( pxLink ) != 0 );
+        configASSERT( pxLink->pxNextFreeBlock == NULL );
+
+        if( heapBLOCK_IS_ALLOCATED( pxLink ) != 0 )
+        {
+            if( pxLink->pxNextFreeBlock == NULL )
+            {
+                /* The block is being returned to the heap - it is no longer
+                 * allocated. */
+                size_t size = pxLink->xBlockSize;
+                size &= ~heapBLOCK_ALLOCATED_BITMASK;
+                return size;
+            }
+        }
+    }
+    return 0;
+}
 /*-----------------------------------------------------------*/
 
 size_t xPortGetFreeHeapSize( void )
