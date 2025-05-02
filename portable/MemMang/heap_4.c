@@ -89,7 +89,16 @@
 * heap - probably so it can be placed in a special segment or address. */
     extern uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
 #else
+#if ( USE_UNUSED_MEM_AS_HEAP == 1 )
+/* unused memory will be used as heap
+ * No need of global heap buffer
+ */
+    void *g_heap_start;
+    void *g_heap_end;
+    uint32_t g_heap_size;
+#else
     PRIVILEGED_DATA static uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+#endif
 #endif /* configAPPLICATION_ALLOCATED_HEAP */
 
 /* Define the linked list structure.  This is used to link free blocks in order
@@ -415,8 +424,24 @@ static void prvHeapInit( void ) /* PRIVILEGED_FUNCTION */
     portPOINTER_SIZE_TYPE uxAddress;
     size_t xTotalHeapSize = configTOTAL_HEAP_SIZE;
 
+#if ( USE_UNUSED_MEM_AS_HEAP == 1 )
+    uint8_t *ucHeap;
+    uint32_t heap_end;
+
+    extern char __heap_freertos_start;  /* Start of heap */
+    extern char __heap_freertos_end;   /* End of heap (limit) */
+
+    heap_end = (uint32_t)&__heap_freertos_end - (1*1024);
+    g_heap_end = (void*)heap_end;
+    uxAddress = ( portPOINTER_SIZE_TYPE )&__heap_freertos_start;
+    ucHeap = ( uint8_t *)uxAddress;
+    g_heap_start = (void*)ucHeap;
+    xTotalHeapSize = heap_end - (uint32_t)uxAddress;
+    g_heap_size = (uint32_t)xTotalHeapSize;
+#else
     /* Ensure the heap starts on a correctly aligned boundary. */
     uxAddress = ( portPOINTER_SIZE_TYPE ) ucHeap;
+#endif /* USE_UNUSED_MEM_AS_HEAP */
 
     if( ( uxAddress & portBYTE_ALIGNMENT_MASK ) != 0 )
     {
